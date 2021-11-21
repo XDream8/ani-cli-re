@@ -19,7 +19,7 @@ static char eps_url[sizeof(search_url)];
 /* char search_results[200]; */
 char anime_id[30];
 char call_func;
-char verbosely;
+long int verbosely;
 
 /* function implementations */
 size_t /* i couldnt find a good way to do this so i skipped this functionality. normally we will set anime_id here */
