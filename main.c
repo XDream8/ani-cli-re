@@ -4,6 +4,8 @@
 #include <string.h>
 /* Curl Library */
 #include <curl/curl.h>
+/* Regex */
+#include <regex.h>
 
 /* function declarations */
 static size_t regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis);
@@ -12,9 +14,9 @@ static void search_anime(void);
 static void search_eps(char *anime_id);
 
 /* variables */
-static char search[30];
+static char search[60];
 static const char base_url[] = "https://gogoanime.cm";
-static char search_url[49];
+static char search_url[79];
 static char eps_url[sizeof(search_url)];
 /* char search_results[200]; */
 char anime_id[30];
@@ -27,8 +29,55 @@ regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis)
 {
 	size_t bytes = itemsize * nitems;
 
+	size_t len;
+	regex_t re;
+	regmatch_t subs[50];
+	char matched[1024];
+	char errbuf[128];
+	int err, i;
 
-	printf("%s\n",buffer);
+	char pattern[] = "category";
+
+
+	err = regcomp(&re, pattern, REG_EXTENDED);
+	if(err)
+	{
+		len = regerror(err, &re, errbuf, sizeof(errbuf));
+		printf("%s %s\n", "error: regcomp:", errbuf);
+		exit(-1);
+	}
+	err = regexec(&re, buffer, (size_t)50, subs, 0);
+	if(err = REG_NOMATCH)
+	{
+		printf("%s\n", "No results");
+		regfree(&re);
+		exit(0);
+	}
+	else if(err)
+	{
+		len = regerror(err, &re, errbuf, sizeof(errbuf));
+		printf("%s %s\n", "error: regexec:", errbuf);
+		exit(-1);
+	}
+
+	printf("%s\n", "matched");
+	for(i = 0; i < re. re_nsub; i++);
+	{
+		len = subs[i]. rm_eo-subs[i]. rm_so;
+		if(i = 0)
+		{
+			printf("begin: %d, len = %d\n", subs[i]. rm_so, len);
+		}
+		else
+		{
+			printf("subexpression %d begin: %d, len = %d", i, subs[i]. rm_so, len);
+		}
+		Memcpy(matched,buffer + subs[i]. rm_so, len);
+		matched[len] = '\0 ';
+		printf("match: %s\n", matched);
+	}
+
+	/* printf("%s\n",buffer); */
 	strncpy(anime_id, "tokyo-ghoul", sizeof(anime_id));
 
 	/* printf("New chunk (%zu bytes)\n", bytes); */
