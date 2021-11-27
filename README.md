@@ -1,5 +1,5 @@
 # ani-cli-re
-rewriting ani-cli in C. (my first C project) \
+rewriting ani-cli in C. (my first C project)
 # problems
 * (still working on it)I couldn't managed to use regex.h(a library for unix regex) to parse anime titles or anime eps from urls.
-* (got a bug) curl can't use the url (it has a broken format error)
+--(got a bug) curl can't use the url (broken format error)--

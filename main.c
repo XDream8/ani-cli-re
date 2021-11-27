@@ -7,6 +7,8 @@
 /* Regex */
 #include <regex.h>
 
+#define BASE_URL "https://gogoanime.cm"
+
 /* function declarations */
 static void regex(char *content, char *pattern);
 static size_t regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis);
@@ -16,7 +18,6 @@ static void search_eps(char *anime_id);
 
 /* variables */
 static char search[45];
-static const char base_url[] = "https://gogoanime.cm";
 static char search_url[128];
 static char eps_url[sizeof(search_url)];
 char result[1024];
@@ -101,6 +102,9 @@ curl_urls(char *url, void *call_func,long int *verbosely)
 	/* Curl */
 	CURL *curl = curl_easy_init();
 	CURLcode res;
+
+	curl_global_init(CURL_GLOBAL_ALL);
+
 	/* check curl */
 	if(!curl)
 	{
@@ -111,46 +115,50 @@ curl_urls(char *url, void *call_func,long int *verbosely)
 	/* for debugging */
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, verbosely);
 	/* send all data to this function  */
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func);
+  /* curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func); */
+
+	curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 
 	res = curl_easy_perform(curl);
 	/* check */
 	if(res != CURLE_OK)
 	{
-		fprintf(stderr,"Could not fetch %s. Error: %s\n",url,curl_easy_strerror(res));
+		fprintf(stderr,"Could not fetch %s. Error: %s\n", url, curl_easy_strerror(res));
 		exit(-2);
 	}
 
 	/* we are done */
 	curl_easy_cleanup(curl);
+	curl_global_cleanup();
 }
 
 void
 search_anime(void)
 {
 	/* Get user input */
-	printf("%s\n","Enter anime name: ");
+	printf("%s\n","Enter anime name:");
 	fgets(search, sizeof(search), stdin);
 
+
+	int i;
 	/* Replace spaces with "-" */
-	for(int i = 0; i < strlen(search); i++)
+	for(i = 0; i < strlen(search); i++)
 	{
-		if(search[i] == ' ')
+		if(isspace(search[i]))
 			search[i] = '-';
 	}
 
 	/* search_url */
-	snprintf(search_url, sizeof(search_url) - 1, "%s/search.html?keyword=%s", base_url, search);
+	snprintf(search_url, sizeof(search_url), "%s/search.html?keyword=%s", BASE_URL, search);
 
 	curl_urls(search_url, regex_animes, (long int *)1L); /* 1L means verbose is active, 0L means its off */
-
 }
 
 void
 search_eps(char *anime_id)
 {
-	snprintf(eps_url, sizeof(eps_url) - 1, "%s/category/%s", base_url, anime_id);
+	snprintf(eps_url, sizeof(eps_url), "%s/category/%s", BASE_URL, anime_id);
 
 	curl_urls(eps_url, regex_animes, (long int *)1L); /* 1L means verbose is active, 0L means its off */
 }
@@ -159,8 +167,8 @@ int
 main()
 {
 	search_anime();
-	strncpy(anime_id, "tokyo-ghoul", sizeof(anime_id));
-	search_eps(anime_id);
+	/* strncpy(anime_id, "tokyo-ghoul", sizeof(anime_id)); */
+	/* search_eps(anime_id); */
 	return 0;
 }
 
