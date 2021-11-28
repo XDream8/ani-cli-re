@@ -1,3 +1,6 @@
+#define BASE_URL "https://gogoanime.cm"
+#define MAX_MATCHES 20
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -7,10 +10,9 @@
 /* Regex */
 #include <regex.h>
 
-#define BASE_URL "https://gogoanime.cm"
 
 /* function declarations */
-static void regex(char *content, char *pattern);
+static void regex(char *content, char *match_pattern);
 static size_t regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis);
 static void curl_urls(char *url, void *call_func, long int *verbosely);
 static void search_anime(void);
@@ -27,52 +29,41 @@ long int verbosely;
 
 
 void
-regex(char *content, char *pattern)
+regex(char *content, char *match_pattern)
 {
-	size_t len;
-	regex_t re;
-	regmatch_t subs[50];
-	char errbuf[128];
-	int err, i;
+	regex_t regex;
+	int reti;
 
-	err = regcomp(&re, pattern, REG_EXTENDED);
-	if(err)
-	{
-		len = regerror(err, &re, errbuf, sizeof(errbuf));
-		printf("%s %s\n", "error: regcomp:", errbuf);
-		exit(-1);
-	}
-	err = regexec(&re, content, (size_t)50, subs, 0);
-	if(err = REG_NOMATCH)
-	{
-		printf("%s\n", "No results");
-		regfree(&re);
-		exit(0);
-	}
-	else if(err)
-	{
-		len = regerror(err, &re, errbuf, sizeof(errbuf));
-		printf("%s %s\n", "error: regexec:", errbuf);
-		exit(-1);
+	/* Compile regular expression */
+	reti = regcomp(&regex, match_pattern, REG_EXTENDED);
+	if (reti) {
+    fprintf(stderr, "Could not compile regex\n");
+    exit(1);
 	}
 
-	printf("%s\n", "matched");
-	for(i = 0; i < re. re_nsub; i++);
-	{
-		len = subs[i]. rm_eo-subs[i]. rm_so;
-		if(i = 0)
-		{
-			printf("begin: %ld, len = %ld\n", subs[i]. rm_so, len);
-		}
-		else
-		{
-			printf("subexpression %d begin: %ld, len = %ld", i, subs[i]. rm_so, len);
-		}
-		memcpy(result, content + subs[i]. rm_so, len);
-		result[len] = '\0';
-		printf("match: %s\n", result);
+	regmatch_t matches[MAX_MATCHES];
+	/* Execute regular expression */
+	reti = regexec(&regex, content, MAX_MATCHES, matches, 0);
+	if (!reti) {
+	  puts("Match");
+	}
+	else if (reti == REG_NOMATCH) {
+    puts("No match");
+	}
+	else {
+    regerror(reti, &regex, content, sizeof(content));
+    fprintf(stderr, "Regex match failed: %s\n", content);
+    exit(1);
 	}
 
+	if(reti == 0)
+	{
+		memcpy(result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+		printf("%s\n", result);
+	}
+
+	/* Free memory allocated to the pattern buffer by regcomp() */
+	regfree(&regex);
 }
 
 /* function implementations */
@@ -81,13 +72,12 @@ regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis)
 {
 	size_t bytes = itemsize * nitems;
 
-	char *str[sizeof(buffer)];
+	char pattern[] = "^[[:space:]]*<a href=\"/category/([^\"]*)\" title=\"([^\"]*)\".*";
 
-	strncpy((char *)str, buffer, sizeof(str));
+	/* char pattern[] = "\"/category/([^\"]*)\" title=\"([^\"]*)\".*"; */
+	/* char pattern[] = "\"/category/tokyo-*"; */
 
-	char pattern[] = "category";
-
-	regex((char *)str, pattern);
+	regex((char *)buffer, pattern);
 
 	/* printf("%s\n",buffer); */
 
@@ -103,20 +93,17 @@ curl_urls(char *url, void *call_func,long int *verbosely)
 	CURL *curl = curl_easy_init();
 	CURLcode res;
 
-	curl_global_init(CURL_GLOBAL_ALL);
-
 	/* check curl */
 	if(!curl)
 	{
-		fprintf(stderr,"Failed to initialize curl!\n");
+		fprintf(stderr, "%s\n", "Failed to initialize curl!");
 		exit(-1);
 	}
 
 	/* for debugging */
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, verbosely);
 	/* send all data to this function  */
-  /* curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func); */
-
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func);
 	curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -124,26 +111,23 @@ curl_urls(char *url, void *call_func,long int *verbosely)
 	/* check */
 	if(res != CURLE_OK)
 	{
-		fprintf(stderr,"Could not fetch %s. Error: %s\n", url, curl_easy_strerror(res));
+		fprintf(stderr, "Could not fetch %s. Error: %s\n", url, curl_easy_strerror(res));
 		exit(-2);
 	}
 
 	/* we are done */
 	curl_easy_cleanup(curl);
-	curl_global_cleanup();
 }
 
 void
 search_anime(void)
 {
 	/* Get user input */
-	printf("%s\n","Enter anime name:");
+	printf("%s\n", "Enter anime name:");
 	fgets(search, sizeof(search), stdin);
 
-
-	int i;
 	/* Replace spaces with "-" */
-	for(i = 0; i < strlen(search); i++)
+	for(int i = 0; i < strlen(search); i++)
 	{
 		if(isspace(search[i]))
 			search[i] = '-';
