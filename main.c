@@ -1,4 +1,4 @@
-#define BASE_URL "https://gogoanime.cm"
+#define BASE_URL "https://www1.gogoanime.cm"
 #define MAX_MATCHES 20
 
 #include <stdio.h>
@@ -21,7 +21,7 @@ static void search_eps(char *anime_id);
 static char search[45];
 static char search_url[128];
 static char eps_url[sizeof(search_url)];
-char result[1024];
+char result[1024][sizeof(search)];
 char anime_id[30];
 char call_func;
 long int verbosely;
@@ -42,45 +42,25 @@ regex(char *content, char *match_pattern)
 	regmatch_t matches[MAX_MATCHES];
 	/* Execute regular expression */
 	reti = regexec(&regex, content, MAX_MATCHES, matches, 0);
-	if (!reti) {
-		puts("Match");
-	}
-	else if (reti == REG_NOMATCH) {
-		puts("No match");
-	}
-	else {
-		regerror(reti, &regex, content, sizeof(content));
-		fprintf(stderr, "Regex match failed: %s\n", content);
-		exit(1);
-	}
 
 	if(reti == 0)
-	{
-		memcpy(result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-		printf("%s\n", result);
-	}
+		memmove(result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
 	/* Free memory allocated to the pattern buffer by regcomp() */
 	regfree(&regex);
+	return 0;
 }
 
 /* function implementations */
 size_t /* i couldnt find a good way to do this so i skipped this functionality. normally we will set anime_id here */
-regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis)
+regex_animes(char *buffer, size_t itemsize, size_t nitems, void *ignorethis)
 {
 	size_t bytes = itemsize * nitems;
 
-	char pattern[] = "^[[:space:]]*<a href=\"/category/([^\"]*)\" title=\"([^\"]*)\".*";
-
-	/* char pattern[] = "\"/category/([^\"]*)\" title=\"([^\"]*)\".*"; */
-	/* char pattern[] = "\"/category/tokyo-*"; */
+	char pattern[] = "\"/category/([^\"]*)\" title=\"([^\"]*)\".*";
 
 	regex((char *)buffer, pattern);
 
-	/* printf("%s\n",buffer); */
-
-	/* printf("New chunk (%zu bytes)\n", bytes); */
-	/* printf("%s\n", buffer); */
 	return bytes;
 }
 
@@ -149,6 +129,7 @@ int
 main()
 {
 	search_anime();
+	printf("%s\n", result);
 	/* strncpy(anime_id, "tokyo-ghoul", sizeof(anime_id)); */
 	/* search_eps(anime_id); */
 	return 0;
