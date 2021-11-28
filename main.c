@@ -10,7 +10,6 @@
 /* Regex */
 #include <regex.h>
 
-
 /* function declarations */
 static void regex(char *content, char *match_pattern);
 static size_t regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis);
@@ -27,7 +26,6 @@ char anime_id[30];
 char call_func;
 long int verbosely;
 
-
 void
 regex(char *content, char *match_pattern)
 {
@@ -37,23 +35,23 @@ regex(char *content, char *match_pattern)
 	/* Compile regular expression */
 	reti = regcomp(&regex, match_pattern, REG_EXTENDED);
 	if (reti) {
-    fprintf(stderr, "Could not compile regex\n");
-    exit(1);
+		fprintf(stderr, "Could not compile regex\n");
+		exit(1);
 	}
 
 	regmatch_t matches[MAX_MATCHES];
 	/* Execute regular expression */
 	reti = regexec(&regex, content, MAX_MATCHES, matches, 0);
 	if (!reti) {
-	  puts("Match");
+		puts("Match");
 	}
 	else if (reti == REG_NOMATCH) {
-    puts("No match");
+		puts("No match");
 	}
 	else {
-    regerror(reti, &regex, content, sizeof(content));
-    fprintf(stderr, "Regex match failed: %s\n", content);
-    exit(1);
+		regerror(reti, &regex, content, sizeof(content));
+		fprintf(stderr, "Regex match failed: %s\n", content);
+		exit(1);
 	}
 
 	if(reti == 0)
@@ -103,7 +101,7 @@ curl_urls(char *url, void *call_func,long int *verbosely)
 	/* for debugging */
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, verbosely);
 	/* send all data to this function  */
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func);
 	curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 
