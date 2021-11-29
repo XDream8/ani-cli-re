@@ -21,7 +21,8 @@ static void search_eps(char *anime_id);
 static char search[45];
 static char search_url[128];
 static char eps_url[sizeof(search_url)];
-char result[1024][sizeof(search)];
+char result[sizeof(search)];
+char search_results[MAX_MATCHES][sizeof(search)];
 char anime_id[30];
 char call_func;
 long int verbosely;
@@ -44,11 +45,16 @@ regex(char *content, char *match_pattern)
 	reti = regexec(&regex, content, MAX_MATCHES, matches, 0);
 
 	if(reti == 0)
-		memmove(result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+	{
+		memcpy(result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+		/* append results to search_results array */
+		char str[sizeof(search)];
+		snprintf(str, sizeof(str), "%s\n", result);
+		strcat(search_results, str);
+	}
 
 	/* Free memory allocated to the pattern buffer by regcomp() */
 	regfree(&regex);
-	return 0;
 }
 
 /* function implementations */
@@ -129,7 +135,7 @@ int
 main()
 {
 	search_anime();
-	printf("%s\n", result);
+	printf("%s\n", search_results);
 	/* strncpy(anime_id, "tokyo-ghoul", sizeof(anime_id)); */
 	/* search_eps(anime_id); */
 	return 0;
