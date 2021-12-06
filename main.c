@@ -11,24 +11,36 @@
 #include <regex.h>
 
 /* function declarations */
-static void regex(char *content, char *match_pattern);
-static size_t regex_animes(char *buffer, size_t itemsize, size_t nitems, void* ignorethis);
-static void curl_urls(char *url, void *call_func, long int *verbosely);
+static void regex(char *content, char *match_pattern, char *memcpy_result, int s_eps);
+static size_t regex_animes(char *buffer, size_t itemsize, size_t nitems, int *ignorethis);
+static void curl_urls(char *url, void *call_func, long int *verbose);
 static void search_anime(void);
-static void search_eps(char *anime_id);
+static void search_eps();
+static void anime_selection();
 
 /* variables */
 static char search[45];
 static char search_url[128];
 static char eps_url[sizeof(search_url)];
-char result[sizeof(search)];
-char search_results[MAX_MATCHES][sizeof(search)];
-char anime_id[30];
-char call_func;
-long int verbosely;
+static char regex_result[sizeof(search)];
+static char regex_eps_result[sizeof(search)];
+char *search_results[MAX_MATCHES][sizeof(search)];
+/* static char *search_results[MAX_MATCHES]; */
+static char anime_id[30];
+static long int verbosely = 1L;
+int *s_eps;
+
+int animes_found = 0;
 
 void
-regex(char *content, char *match_pattern)
+printexit(char *str)
+{
+	fprintf(stderr, "%s\n", str);
+	exit(0);
+}
+
+void
+regex(char *content, char *match_pattern, char *memcpy_result, int s_eps)
 {
 	regex_t regex;
 	int reti;
@@ -46,11 +58,21 @@ regex(char *content, char *match_pattern)
 
 	if(reti == 0)
 	{
-		memcpy(result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+		if(s_eps == 0)
+		{
+			memcpy(memcpy_result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+			strncpy((char *)search_results[animes_found], memcpy_result, 1024);
+			animes_found++;
+		}
+		else
+		{
+			memcpy(memcpy_result, content + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+			printf("%s\n", regex_eps_result);
+		}
 		/* append results to search_results array */
-		char str[sizeof(search)];
-		snprintf(str, sizeof(str), "%s\n", result);
-		strcat(search_results, str);
+		/* char str[sizeof(search)]; */
+		/* snprintf(str, sizeof(str), "%s\n", regex_result); */
+		/* strncat((char *)search_results, str, sizeof(str)); */
 	}
 
 	/* Free memory allocated to the pattern buffer by regcomp() */
@@ -58,20 +80,33 @@ regex(char *content, char *match_pattern)
 }
 
 /* function implementations */
-size_t /* i couldnt find a good way to do this so i skipped this functionality. normally we will set anime_id here */
-regex_animes(char *buffer, size_t itemsize, size_t nitems, void *ignorethis)
+size_t
+regex_animes(char *buffer, size_t itemsize, size_t nitems, int *ignorethis)
 {
 	size_t bytes = itemsize * nitems;
 
 	char pattern[] = "\"/category/([^\"]*)\" title=\"([^\"]*)\".*";
 
-	regex((char *)buffer, pattern);
+	regex((char *)buffer, pattern, regex_result, 0);
+
+	return bytes;
+}
+
+size_t
+regex_eps(char *buffer, size_t itemsize, size_t nitems, int *ignorethis)
+{
+	size_t bytes = itemsize * nitems;
+
+	/* printf("%s\n", buffer); */
+	char pattern[] = "ep_start = '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*";
+
+	regex((char *)buffer, pattern, regex_eps_result, 1);
 
 	return bytes;
 }
 
 void
-curl_urls(char *url, void *call_func,long int *verbosely)
+curl_urls(char *url, void *call_func, long int *verbose)
 {
 	/* Curl */
 	CURL *curl = curl_easy_init();
@@ -85,7 +120,7 @@ curl_urls(char *url, void *call_func,long int *verbosely)
 	}
 
 	/* for debugging */
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, verbosely);
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose);
 	/* send all data to this function  */
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, call_func);
 	curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
@@ -111,7 +146,7 @@ search_anime(void)
 	fgets(search, sizeof(search), stdin);
 
 	/* Replace spaces with "-" */
-	for(int i = 0; i < strlen(search); i++)
+	for(int i = 0; i < strnlen(search, sizeof(search)); i++)
 	{
 		if(isspace(search[i]))
 			search[i] = '-';
@@ -120,24 +155,58 @@ search_anime(void)
 	/* search_url */
 	snprintf(search_url, sizeof(search_url), "%s/search.html?keyword=%s", BASE_URL, search);
 
-	curl_urls(search_url, regex_animes, (long int *)1L); /* 1L means verbose is active, 0L means its off */
+	curl_urls(search_url, regex_animes, (long int *)verbosely); /* 1L means verbose is active, 0L means its off */
+
+	/* clear the screen */
+	if(!verbosely)
+		printf("\e[1;1H\e[2J");
 }
 
 void
-search_eps(char *anime_id)
+search_eps()
 {
 	snprintf(eps_url, sizeof(eps_url), "%s/category/%s", BASE_URL, anime_id);
 
-	curl_urls(eps_url, regex_animes, (long int *)1L); /* 1L means verbose is active, 0L means its off */
+	curl_urls(eps_url, regex_eps, (long int *)verbosely); /* 1L means verbose is active, 0L means its off */
+}
+
+void
+anime_selection()
+{
+	int anime_number;
+
+	printf("%s\n", "Found");
+	for(int j = 0; j < animes_found; j++)
+	{
+		/* printf("%s\n", search_results[anime_number]); */
+		printf("[%i] %s\n", j+1, (char *)search_results[j]);
+	}
+	printf("%s\n", "Enter number");
+	scanf("%d", &anime_number);
+	/* the first anime in the list is search_results[0], so if we enter 1 we will get the second anime in the list. this fixes that */
+	anime_number--;
+
+	strncpy(anime_id, search_results[anime_number], sizeof(anime_id));
 }
 
 int
-main()
+main(int argc, char *argv[])
 {
+	if (argc == 2 && !strcmp("-v", argv[1]))
+		printexit("ani-cli-re: ani-cli rewritten in C");
+	else if (argc != 1)
+		printexit("usage: ani-cli-re [-v]");
+
+	/* start process */
 	search_anime();
-	printf("%s\n", search_results);
-	/* strncpy(anime_id, "tokyo-ghoul", sizeof(anime_id)); */
-	/* search_eps(anime_id); */
+
+	/* if there is no result exit */
+	if(strnlen((char *)search_results, sizeof(search_results)) <= 0)
+		printexit("No Search Results");
+
+	/* printf("%s\n", search_results[3]); */
+	anime_selection();
+	search_eps();
 	return 0;
 }
 

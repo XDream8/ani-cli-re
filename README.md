@@ -5,4 +5,4 @@ rewriting ani-cli in C. (my first C project)
 ~~(got a bug) curl can't use the url (broken format error)~~
 # done
 * usage of regex.h library(almost)
-* appending regex results to search_results char array
+* searching anime and selecting anime done!
