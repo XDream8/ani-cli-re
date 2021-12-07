@@ -6,3 +6,4 @@ rewriting ani-cli in C. (my first C project)
 # done
 * usage of regex.h library(almost)
 * searching anime and selecting anime done!
+* searching episodes and selecting episode done!
