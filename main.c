@@ -41,7 +41,7 @@ char *search_results[MAX_MATCHES][sizeof(search)];
 int eps_results;
 /* other variables */
 static char anime_id[30];
-static long int verbosely = 1L;
+static long int verbosely = 0L;
 int animes_found = 0;
 int embedded_video_urls_found = 0;
 static int episode_number;
@@ -90,7 +90,7 @@ regex(char *content, char *match_pattern, char *memcpy_result, int job)
 		else if(job == 3)
 		{
 			strncpy((char *)get_links, memcpy_result, sizeof(get_links));
-			printf("%s\n", get_links);
+			printf("%s\n", (char *)get_links);
 		}
 	}
 
@@ -104,7 +104,7 @@ regex_animes(char *buffer, size_t itemsize, size_t nitems, int *ignorethis)
 {
 	size_t bytes = itemsize * nitems;
 
-	char pattern[] = "\"/category/([^\"]*)\" title=\"([^\"]*)\".*";
+	char pattern[] = "\"/category/([^\"]*)\".*";
 
 	regex((char *)buffer, pattern, regex_result, 0);
 
@@ -128,8 +128,6 @@ regex_embedded_video_url(char *buffer, size_t itemsize, size_t nitems, int *igno
 {
 	size_t bytes = itemsize * nitems;
 
-	/* printf("%s\n", buffer); */
-	/* char pattern[] = "ep_start = '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*"; */
 	char pattern[] = "rel=\"100\" data-video=\"([^\"]*)\".*";
 
 	regex((char *)buffer, pattern, regex_embedded_video_url_results, 2);
@@ -142,8 +140,6 @@ regex_get_links(char *buffer, size_t itemsize, size_t nitems, int *ignorethis)
 {
 	size_t bytes = itemsize * nitems;
 
-	/* printf("%s\n", buffer); */
-	/* char pattern[] = "ep_start = '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*"; */
 	char pattern[] = ".*sources:.*(https[^\']*).*";
 
 	regex((char *)buffer, pattern, regex_get_links_results, 3);
@@ -202,7 +198,6 @@ search_anime(void)
 	snprintf(search_url, sizeof(search_url), "%s/search.html?keyword=%s", BASE_URL, search);
 
 	curl_urls(search_url, regex_animes, (long int *)verbosely); /* 1L means verbose is active, 0L means its off */
-
 }
 
 void
@@ -221,7 +216,7 @@ anime_selection(void)
 
 	int anime_number;
 
-	printf("%s\n", "Found");
+	printf("Searching: %s\n", search);
 	for(int j = 0; j < animes_found; j++)
 	{
 		printf("[%i] %s\n", j+1, (char *)search_results[j]);
@@ -276,20 +271,17 @@ open_episode(void)
 	snprintf(episode_url, sizeof(episode_url), "%s/%s-episode-%i", BASE_URL, anime_id, episode_number);
 	curl_urls(episode_url, regex_embedded_video_url, (long int *)verbosely);
 
+	printf("%s\n",embedded_video_urls[0]);
 	/* get links */
 	if(strstr(embedded_video_urls[0], "https:") == NULL)
 		snprintf(temp_embedded_video_url, sizeof(temp_embedded_video_url), "https:%s", embedded_video_urls[0]);
-	printf("%s\n", embedded_video_urls[0]);
 	curl_urls(temp_embedded_video_url, regex_get_links, (long int *)verbosely);
-	/* printf("%s\n", get_links); */
 
 	strncpy(temp_video_url, (char *)get_links, sizeof(temp_video_url));
 	if(download == 0)
 		snprintf(player_command, sizeof(player_command), "setsid -f %s --http-header-fields=\"Referer: %s\" \"%s\"", PLAYER, temp_embedded_video_url, temp_video_url);
 	else if(download == 1)
 		snprintf(player_command, sizeof(player_command), "ffmpeg -headers \"Referer: %s\" -i \"%s\" -c copy \"%s-%i.mkv\"", temp_embedded_video_url, temp_video_url, anime_id, episode_number);
-
-	puts(player_command);
 
 	system(player_command);
 }
@@ -298,7 +290,6 @@ int
 main(int argc, char *argv[])
 {
 	int opt;
-
 	while((opt = getopt(argc, argv, "dvh")) != -1)
 	{
 		switch(opt)
@@ -307,22 +298,20 @@ main(int argc, char *argv[])
 				download = 1;
 				break;
 			case 'v':
-				printexit("ani-cli-re: ani-cli rewritten in C");
+				verbosely = 1L;
 				break;
 			case 'h':
-				printexit("usage: ani-cli-re [-v] [-d]");
+				printexit("ani-cli-re: ani-cli rewritten in C\nusage: ani-cli-re [-v] [-d]");
 				break;
 			default:
 				break;
 		}
 	}
-
 	/* start process */
 	search_anime();
 	/* if there is no result exit */
 	if(strnlen((char *)search_results, sizeof(search_results)) <= 0)
 		printexit("No Search Results");
-
 	anime_selection();
 	search_eps();
 	episode_selection();
